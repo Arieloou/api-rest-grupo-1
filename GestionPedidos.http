@@ -1,0 +1,25 @@
+@GestionPedidos_HostAddress = http://localhost:5237
+
+POST {{GestionPedidos_HostAddress}}/orders
+Content-Type: application/json
+X-Correlation-Id: demo-create-order
+
+{
+  "customerId": "C-1024",
+  "items": [
+    {
+      "productId": "P-500",
+      "quantity": 2
+    }
+  ]
+}
+
+###
+
+GET {{GestionPedidos_HostAddress}}/orders/O-9831
+Accept: application/json
+
+###
+
+GET {{GestionPedidos_HostAddress}}/orders?customerId=C-1024
+Accept: application/json
