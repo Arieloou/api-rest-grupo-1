@@ -1,5 +1,5 @@
 using System.Text.Json.Serialization;
-using GestionPedidos.Models;
+using GestionPedidos.Models.Responses;
 using GestionPedidos.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -38,6 +38,7 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
     };
 });
 
+builder.Services.AddSingleton<CustomerService>();
 builder.Services.AddSingleton<OrderService>();
 
 var app = builder.Build();

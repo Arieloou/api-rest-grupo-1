@@ -23,3 +23,56 @@ Accept: application/json
 
 GET {{GestionPedidos_HostAddress}}/orders?customerId=C-1024
 Accept: application/json
+
+###
+
+PUT {{GestionPedidos_HostAddress}}/orders/O-9831
+Content-Type: application/json
+
+{
+  "customerId": "C-1024",
+  "items": [
+    {
+      "productId": "P-501",
+      "quantity": 3
+    }
+  ]
+}
+
+###
+
+DELETE {{GestionPedidos_HostAddress}}/orders/O-9831
+
+###
+
+GET {{GestionPedidos_HostAddress}}/customers
+Accept: application/json
+
+###
+
+GET {{GestionPedidos_HostAddress}}/customers/C-1024
+Accept: application/json
+
+###
+
+POST {{GestionPedidos_HostAddress}}/customers
+Content-Type: application/json
+
+{
+  "fullName": "Ana Pérez",
+  "email": "ana.perez@example.com"
+}
+
+###
+
+PUT {{GestionPedidos_HostAddress}}/customers/C-1025
+Content-Type: application/json
+
+{
+  "fullName": "Ana Pérez Gómez",
+  "email": "ana.gomez@example.com"
+}
+
+###
+
+DELETE {{GestionPedidos_HostAddress}}/customers/C-1025

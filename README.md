@@ -1,10 +1,10 @@
 # API de Gestión de Pedidos
 
-API REST desarrollada con ASP.NET Core 10 para crear y consultar pedidos. El contrato formal se encuentra en [`openapi.yaml`](openapi.yaml) y la colección ejecutable en [`postman/API.postman_collection.json`](postman/API.postman_collection.json).
+API REST desarrollada con ASP.NET Core 10 para administrar clientes y sus pedidos. El contrato formal se encuentra en [`openapi.yaml`](openapi.yaml) y la colección ejecutable en [`postman/API.postman_collection.json`](postman/API.postman_collection.json).
 
 ## Problema de integración
 
-Un canal de ventas necesita registrar los pedidos que realizan sus clientes y consultar posteriormente su estado e importe. La API desacopla ese canal del sistema encargado de validar productos, calcular el total y conservar el pedido, ofreciendo un contrato HTTP uniforme para la integración.
+Un canal de ventas necesita registrar y mantener sus clientes, además de crear y administrar los pedidos que realizan. La API desacopla ese canal del sistema encargado de validar clientes e inventario, calcular totales y conservar la información, ofreciendo un contrato HTTP uniforme para la integración.
 
 ## Sistemas involucrados
 
@@ -20,6 +20,20 @@ Un canal de ventas necesita registrar los pedidos que realizan sus clientes y co
 - **Customer (cliente):** propietario del pedido, identificado con el formato `C-{número}`.
 - **Product (producto):** artículo de catálogo con precio e inventario, identificado con el formato `P-{número}`.
 
+## Estructura de modelos
+
+Los modelos se organizan por responsabilidad y sus namespaces siguen la misma estructura:
+
+```text
+Models/
+├── Domain/       # Modelos internos del dominio y persistencia en memoria
+├── Requests/     # Contratos de entrada, separados por recurso
+│   ├── Customers/
+│   └── Orders/
+├── Responses/    # Contratos JSON devueltos por la API
+└── Results/      # Resultados internos de las operaciones de servicio
+```
+
 ## Endpoints
 
 | Método | Ruta | Parámetros | Respuesta exitosa | Descripción |
@@ -27,6 +41,13 @@ Un canal de ventas necesita registrar los pedidos que realizan sus clientes y co
 | `POST` | `/orders` | Body `CreateOrderRequest` | `201 Created` | Crea un pedido y devuelve su URL en `Location`. |
 | `GET` | `/orders/{orderId}` | Path `orderId` | `200 OK` | Obtiene un pedido por su identificador. |
 | `GET` | `/orders` | Query opcional `customerId` | `200 OK` | Lista pedidos; permite filtrar por cliente. |
+| `PUT` | `/orders/{orderId}` | Path `orderId`, body `UpdateOrderRequest` | `200 OK` | Reemplaza el pedido y recalcula su total e inventario. |
+| `DELETE` | `/orders/{orderId}` | Path `orderId` | `204 No Content` | Elimina el pedido y repone su inventario. |
+| `POST` | `/customers` | Body `CreateCustomerRequest` | `201 Created` | Crea un cliente. |
+| `GET` | `/customers/{customerId}` | Path `customerId` | `200 OK` | Obtiene un cliente por su identificador. |
+| `GET` | `/customers` | — | `200 OK` | Lista todos los clientes. |
+| `PUT` | `/customers/{customerId}` | Path `customerId`, body `UpdateCustomerRequest` | `200 OK` | Reemplaza los datos del cliente. |
+| `DELETE` | `/customers/{customerId}` | Path `customerId` | `204 No Content` | Elimina un cliente sin pedidos asociados. |
 
 Ejemplo requerido de path parameter: `GET /orders/O-9831`.
 
@@ -77,6 +98,8 @@ Todos los errores comparten `code`, `message` y `correlationId`. Los errores de 
 4. **Separación entre path y query parameters.** `orderId` identifica un recurso concreto, mientras `customerId` modifica el filtro de una colección sin crear rutas ad hoc.
 5. **Importes decimales.** Los precios y totales se calculan con `decimal` para evitar errores de precisión binaria propios de valores de punto flotante.
 6. **Almacenamiento en memoria para el taller.** El alcance se mantiene autocontenido y ejecutable sin infraestructura. Los datos y el inventario se reinician cada vez que arranca la aplicación; en producción se sustituiría por persistencia transaccional.
+7. **Integridad entre clientes y pedidos.** Un pedido solo puede usar un cliente existente y un cliente con pedidos no puede eliminarse. Esto evita referencias huérfanas.
+8. **Inventario reversible.** Al reemplazar o eliminar un pedido se devuelven primero sus cantidades al inventario, evitando pérdidas de stock durante el CRUD.
 
 ## Ejecución local
 
@@ -94,8 +117,9 @@ Productos disponibles al iniciar: `P-500` (25 unidades), `P-501` (50) y `P-502` 
 ## Pruebas con Postman
 
 1. Importe `postman/API.postman_collection.json`.
-2. Ejecute primero **Crear pedido**. Su script guarda el `id` retornado en la variable `orderId`.
-3. Ejecute las consultas de la colección. La variable `baseUrl` tiene como valor inicial `http://localhost:5237`.
+2. La API inicia con el cliente `C-1024`; también puede ejecutar **Crear cliente**, cuyo script guarda el identificador en `customerId`.
+3. Ejecute **Crear pedido** para guardar el identificador retornado en `orderId`.
+4. Ejecute las consultas, actualizaciones y eliminaciones. La variable `baseUrl` tiene como valor inicial `http://localhost:5237`.
 
 ## Reflexión Final
 ¿Qué ventaja obtiene el sistema consumidor al disponer de un contrato OpenAPI antes de que el proveedor haya terminado de implementar la API?

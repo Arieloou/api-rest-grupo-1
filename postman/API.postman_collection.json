@@ -1,8 +1,8 @@
 {
   "info": {
     "_postman_id": "7cd1ae4f-a0c2-4b39-bb8b-937d8f990c21",
-    "name": "API de Gestión de Pedidos",
-    "description": "Colección para crear y consultar pedidos según el contrato OpenAPI 1.0.0.",
+    "name": "API de Gestión de Pedidos y Clientes",
+    "description": "CRUD de los recursos orders y customers según el contrato OpenAPI 2.0.0.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -13,151 +13,332 @@
     {
       "key": "orderId",
       "value": "O-9831"
+    },
+    {
+      "key": "createdCustomerId",
+      "value": "C-1025"
     }
   ],
   "item": [
     {
-      "name": "Crear pedido",
-      "event": [
+      "name": "Customers",
+      "item": [
         {
-          "listen": "test",
-          "script": {
-            "exec": [
-              "pm.test('Status 201', function () { pm.response.to.have.status(201); });",
-              "pm.test('Contrato de respuesta', function () {",
-              "  const body = pm.response.json();",
-              "  pm.expect(body).to.have.all.keys('id', 'customerId', 'status', 'total');",
-              "  pm.collectionVariables.set('orderId', body.id);",
-              "});",
-              "pm.test('Incluye Location', function () { pm.response.to.have.header('Location'); });"
-            ],
-            "type": "text/javascript"
-          }
-        }
-      ],
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          },
-          {
-            "key": "X-Correlation-Id",
-            "value": "postman-create-order"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"customerId\": \"C-1024\",\n  \"items\": [\n    {\n      \"productId\": \"P-500\",\n      \"quantity\": 2\n    }\n  ]\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "{{baseUrl}}/orders",
-          "host": ["{{baseUrl}}"],
-          "path": ["orders"]
-        }
-      }
-    },
-    {
-      "name": "Consultar pedido por ID",
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "exec": [
-              "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
-              "pm.test('Retorna el pedido solicitado', function () { pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('orderId')); });"
-            ],
-            "type": "text/javascript"
-          }
-        }
-      ],
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/orders/{{orderId}}",
-          "host": ["{{baseUrl}}"],
-          "path": ["orders", "{{orderId}}"]
-        }
-      }
-    },
-    {
-      "name": "Consultar pedidos por cliente",
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "exec": [
-              "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
-              "pm.test('Retorna una lista', function () { pm.expect(pm.response.json()).to.be.an('array'); });"
-            ],
-            "type": "text/javascript"
-          }
-        }
-      ],
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/orders?customerId=C-1024",
-          "host": ["{{baseUrl}}"],
-          "path": ["orders"],
-          "query": [
+          "name": "Listar clientes",
+          "event": [
             {
-              "key": "customerId",
-              "value": "C-1024"
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Retorna una lista', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                ]
+              }
             }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Validar error de producto sin inventario",
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "exec": [
-              "pm.test('Status 409', function () { pm.response.to.have.status(409); });",
-              "pm.test('Error estandarizado', function () {",
-              "  const body = pm.response.json();",
-              "  pm.expect(body).to.include.all.keys('code', 'message', 'correlationId');",
-              "  pm.expect(body.code).to.eql('PRODUCT_NOT_AVAILABLE');",
-              "});"
-            ],
-            "type": "text/javascript"
-          }
-        }
-      ],
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"customerId\": \"C-1024\",\n  \"items\": [\n    {\n      \"productId\": \"P-500\",\n      \"quantity\": 1000\n    }\n  ]\n}",
-          "options": {
-            "raw": {
-              "language": "json"
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/customers",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers"]
             }
           }
         },
-        "url": {
-          "raw": "{{baseUrl}}/orders",
-          "host": ["{{baseUrl}}"],
-          "path": ["orders"]
+        {
+          "name": "Consultar cliente por ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Retorna C-1024', () => pm.expect(pm.response.json().id).to.eql('C-1024'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/customers/C-1024",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers", "C-1024"]
+            }
+          }
+        },
+        {
+          "name": "Crear cliente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Incluye Location', () => pm.response.to.have.header('Location'));",
+                  "pm.collectionVariables.set('createdCustomerId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Correlation-Id",
+                "value": "postman-create-customer"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Ana Pérez\",\n  \"email\": \"ana.perez@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/customers",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers"]
+            }
+          }
+        },
+        {
+          "name": "Actualizar cliente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Actualiza el nombre', () => pm.expect(pm.response.json().fullName).to.eql('Ana Pérez Gómez'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Ana Pérez Gómez\",\n  \"email\": \"ana.gomez@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/customers/{{createdCustomerId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers", "{{createdCustomerId}}"]
+            }
+          }
+        },
+        {
+          "name": "Eliminar cliente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/customers/{{createdCustomerId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["customers", "{{createdCustomerId}}"]
+            }
+          }
         }
-      }
+      ]
+    },
+    {
+      "name": "Orders",
+      "item": [
+        {
+          "name": "Crear pedido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Incluye Location', () => pm.response.to.have.header('Location'));",
+                  "pm.collectionVariables.set('orderId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Correlation-Id",
+                "value": "postman-create-order"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"C-1024\",\n  \"items\": [\n    {\n      \"productId\": \"P-500\",\n      \"quantity\": 2\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"]
+            }
+          }
+        },
+        {
+          "name": "Listar pedidos por cliente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Retorna una lista', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders?customerId=C-1024",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"],
+              "query": [
+                {
+                  "key": "customerId",
+                  "value": "C-1024"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Consultar pedido por ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Retorna el pedido', () => pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('orderId')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderId}}"]
+            }
+          }
+        },
+        {
+          "name": "Actualizar pedido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Recalcula el total', () => pm.expect(pm.response.json().total).to.eql(58.5));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"C-1024\",\n  \"items\": [\n    {\n      \"productId\": \"P-501\",\n      \"quantity\": 3\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderId}}"]
+            }
+          }
+        },
+        {
+          "name": "Eliminar pedido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/{{orderId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "{{orderId}}"]
+            }
+          }
+        }
+      ]
     }
   ]
 }

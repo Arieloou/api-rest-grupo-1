@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace GestionPedidos.Models;
+namespace GestionPedidos.Models.Responses;
 
 public sealed record ErrorResponse(
     string Code,

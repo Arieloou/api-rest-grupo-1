@@ -1,36 +1,36 @@
 openapi: 3.0.3
 info:
-  title: API de Gestión de Pedidos
-  version: 1.0.0
-  description: API REST para registrar y consultar pedidos de clientes.
-  contact:
-    name: Equipo de Integración
+  title: API de Gestión de Pedidos y Clientes
+  version: 2.0.0
+  description: API REST para administrar clientes y sus pedidos.
 servers:
   - url: http://localhost:5237
     description: Entorno local
 tags:
   - name: Orders
-    description: Operaciones sobre pedidos
+    description: Administración de pedidos
+  - name: Customers
+    description: Administración de clientes
 paths:
   /orders:
+    parameters:
+      - $ref: '#/components/parameters/CorrelationId'
     get:
       tags: [Orders]
-      summary: Consultar pedidos
-      description: Retorna todos los pedidos o los filtra por cliente.
+      summary: Listar pedidos
       operationId: listOrders
       parameters:
-        - $ref: '#/components/parameters/CorrelationId'
         - name: customerId
           in: query
           required: false
-          description: Identificador del cliente por el cual se filtran los pedidos.
+          description: Filtra los pedidos por cliente.
           schema:
             type: string
             pattern: '^C-[0-9]+$'
           example: C-1024
       responses:
         '200':
-          description: Lista de pedidos encontrada.
+          description: Lista de pedidos.
           headers:
             X-Correlation-Id:
               $ref: '#/components/headers/CorrelationId'
@@ -40,11 +40,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Order'
-              example:
-                - id: O-9831
-                  customerId: C-1024
-                  status: CREATED
-                  total: 129.90
         '400':
           $ref: '#/components/responses/BadRequest'
         '500':
@@ -52,16 +47,13 @@ paths:
     post:
       tags: [Orders]
       summary: Crear un pedido
-      description: Valida la disponibilidad de los productos y registra un pedido nuevo.
       operationId: createOrder
-      parameters:
-        - $ref: '#/components/parameters/CorrelationId'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateOrderRequest'
+              $ref: '#/components/schemas/OrderWriteRequest'
             example:
               customerId: C-1024
               items:
@@ -89,8 +81,8 @@ paths:
                 total: 129.90
         '400':
           $ref: '#/components/responses/BadRequest'
-        '409':
-          description: Uno de los productos no existe o no tiene inventario suficiente.
+        '404':
+          description: El cliente no existe.
           headers:
             X-Correlation-Id:
               $ref: '#/components/headers/CorrelationId'
@@ -99,26 +91,21 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
               example:
-                code: PRODUCT_NOT_AVAILABLE
-                message: Product P-500 does not have sufficient stock.
+                code: CUSTOMER_NOT_FOUND
+                message: Customer C-9999 was not found.
                 correlationId: ab23f8b1-91c2-45dc
+        '409':
+          $ref: '#/components/responses/ProductNotAvailable'
         '500':
           $ref: '#/components/responses/InternalError'
   /orders/{orderId}:
+    parameters:
+      - $ref: '#/components/parameters/CorrelationId'
+      - $ref: '#/components/parameters/OrderId'
     get:
       tags: [Orders]
-      summary: Consultar un pedido por ID
+      summary: Obtener un pedido
       operationId: getOrderById
-      parameters:
-        - $ref: '#/components/parameters/CorrelationId'
-        - name: orderId
-          in: path
-          required: true
-          description: Identificador único del pedido.
-          schema:
-            type: string
-            pattern: '^O-[0-9]+$'
-          example: O-9831
       responses:
         '200':
           description: Pedido encontrado.
@@ -132,7 +119,186 @@ paths:
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
-          description: Pedido no encontrado.
+          $ref: '#/components/responses/OrderNotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    put:
+      tags: [Orders]
+      summary: Reemplazar un pedido
+      description: Reemplaza el cliente y los ítems, recalcula el total y ajusta el inventario.
+      operationId: updateOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderWriteRequest'
+      responses:
+        '200':
+          description: Pedido actualizado.
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: El pedido o el cliente no existe.
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          $ref: '#/components/responses/ProductNotAvailable'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags: [Orders]
+      summary: Eliminar un pedido
+      description: Elimina el pedido y repone al inventario las cantidades reservadas.
+      operationId: deleteOrder
+      responses:
+        '204':
+          description: Pedido eliminado.
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/OrderNotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /customers:
+    parameters:
+      - $ref: '#/components/parameters/CorrelationId'
+    get:
+      tags: [Customers]
+      summary: Listar clientes
+      operationId: listCustomers
+      responses:
+        '200':
+          description: Lista de clientes.
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Customer'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags: [Customers]
+      summary: Crear un cliente
+      operationId: createCustomer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerWriteRequest'
+            example:
+              fullName: Ana Pérez
+              email: ana.perez@example.com
+      responses:
+        '201':
+          description: Cliente creado.
+          headers:
+            Location:
+              description: URL del cliente creado.
+              schema:
+                type: string
+                format: uri-reference
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/DuplicateCustomerEmail'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /customers/{customerId}:
+    parameters:
+      - $ref: '#/components/parameters/CorrelationId'
+      - $ref: '#/components/parameters/CustomerId'
+    get:
+      tags: [Customers]
+      summary: Obtener un cliente
+      operationId: getCustomerById
+      responses:
+        '200':
+          description: Cliente encontrado.
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/CustomerNotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    put:
+      tags: [Customers]
+      summary: Reemplazar un cliente
+      operationId: updateCustomer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerWriteRequest'
+      responses:
+        '200':
+          description: Cliente actualizado.
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/CustomerNotFound'
+        '409':
+          $ref: '#/components/responses/DuplicateCustomerEmail'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags: [Customers]
+      summary: Eliminar un cliente
+      description: Solo se puede eliminar un cliente que no tenga pedidos.
+      operationId: deleteCustomer
+      responses:
+        '204':
+          description: Cliente eliminado.
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/CustomerNotFound'
+        '409':
+          description: El cliente tiene pedidos asociados.
           headers:
             X-Correlation-Id:
               $ref: '#/components/headers/CorrelationId'
@@ -141,8 +307,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
               example:
-                code: ORDER_NOT_FOUND
-                message: Order O-9831 was not found.
+                code: CUSTOMER_HAS_ORDERS
+                message: Customer C-1024 cannot be deleted because it has orders.
                 correlationId: ab23f8b1-91c2-45dc
         '500':
           $ref: '#/components/responses/InternalError'
@@ -152,10 +318,28 @@ components:
       name: X-Correlation-Id
       in: header
       required: false
-      description: Identificador opcional para rastrear una solicitud de extremo a extremo.
+      description: Identificador opcional para rastrear la solicitud.
       schema:
         type: string
       example: ab23f8b1-91c2-45dc
+    OrderId:
+      name: orderId
+      in: path
+      required: true
+      description: Identificador del pedido.
+      schema:
+        type: string
+        pattern: '^O-[0-9]+$'
+      example: O-9831
+    CustomerId:
+      name: customerId
+      in: path
+      required: true
+      description: Identificador del cliente.
+      schema:
+        type: string
+        pattern: '^C-[0-9]+$'
+      example: C-1024
   headers:
     CorrelationId:
       description: Identificador utilizado para rastrear la solicitud.
@@ -175,9 +359,58 @@ components:
             code: INVALID_REQUEST
             message: The request contains invalid data.
             correlationId: ab23f8b1-91c2-45dc
-            details:
-              Items:
-                - At least one item is required.
+    OrderNotFound:
+      description: Pedido no encontrado.
+      headers:
+        X-Correlation-Id:
+          $ref: '#/components/headers/CorrelationId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: ORDER_NOT_FOUND
+            message: Order O-9831 was not found.
+            correlationId: ab23f8b1-91c2-45dc
+    CustomerNotFound:
+      description: Cliente no encontrado.
+      headers:
+        X-Correlation-Id:
+          $ref: '#/components/headers/CorrelationId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: CUSTOMER_NOT_FOUND
+            message: Customer C-1024 was not found.
+            correlationId: ab23f8b1-91c2-45dc
+    ProductNotAvailable:
+      description: Un producto no existe o no tiene inventario suficiente.
+      headers:
+        X-Correlation-Id:
+          $ref: '#/components/headers/CorrelationId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: PRODUCT_NOT_AVAILABLE
+            message: Product P-500 does not have sufficient stock.
+            correlationId: ab23f8b1-91c2-45dc
+    DuplicateCustomerEmail:
+      description: Ya existe un cliente con el correo indicado.
+      headers:
+        X-Correlation-Id:
+          $ref: '#/components/headers/CorrelationId'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: CUSTOMER_EMAIL_ALREADY_EXISTS
+            message: A customer with email ana.perez@example.com already exists.
+            correlationId: ab23f8b1-91c2-45dc
     InternalError:
       description: Error inesperado del servidor.
       headers:
@@ -187,12 +420,8 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
-          example:
-            code: INTERNAL_ERROR
-            message: An unexpected error occurred.
-            correlationId: ab23f8b1-91c2-45dc
   schemas:
-    CreateOrderRequest:
+    OrderWriteRequest:
       type: object
       additionalProperties: false
       required: [customerId, items]
@@ -205,8 +434,8 @@ components:
           type: array
           minItems: 1
           items:
-            $ref: '#/components/schemas/CreateOrderItem'
-    CreateOrderItem:
+            $ref: '#/components/schemas/OrderItem'
+    OrderItem:
       type: object
       additionalProperties: false
       required: [productId, quantity]
@@ -237,13 +466,43 @@ components:
         status:
           type: string
           enum: [CREATED]
-          example: CREATED
         total:
           type: number
           format: decimal
           minimum: 0
           multipleOf: 0.01
           example: 129.90
+    CustomerWriteRequest:
+      type: object
+      additionalProperties: false
+      required: [fullName, email]
+      properties:
+        fullName:
+          type: string
+          minLength: 2
+          maxLength: 120
+          example: Ana Pérez
+        email:
+          type: string
+          format: email
+          maxLength: 254
+          example: ana.perez@example.com
+    Customer:
+      type: object
+      additionalProperties: false
+      required: [id, fullName, email]
+      properties:
+        id:
+          type: string
+          pattern: '^C-[0-9]+$'
+          example: C-1025
+        fullName:
+          type: string
+          example: Ana Pérez
+        email:
+          type: string
+          format: email
+          example: ana.perez@example.com
     Error:
       type: object
       additionalProperties: false
@@ -252,18 +511,15 @@ components:
         code:
           type: string
           description: Código estable y legible por máquinas.
-          example: PRODUCT_NOT_AVAILABLE
         message:
           type: string
           description: Descripción legible del error.
-          example: Product P-500 does not have sufficient stock.
         correlationId:
           type: string
           description: Identificador para diagnóstico y trazabilidad.
-          example: ab23f8b1-91c2-45dc
         details:
           type: object
-          description: Errores por campo; solo se incluye cuando aplica.
+          description: Errores de validación por campo; se incluye cuando aplica.
           additionalProperties:
             type: array
             items:
