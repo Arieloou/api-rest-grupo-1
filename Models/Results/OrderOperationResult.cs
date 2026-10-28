@@ -16,6 +16,9 @@ public sealed record OrderOperationResult(
     public static OrderOperationResult CustomerNotFound() =>
         new(null, OrderOperationFailure.CustomerNotFound);
 
+    public static OrderOperationResult OrderAlreadyDeleted() =>
+        new(null, OrderOperationFailure.OrderAlreadyDeleted);
+
     public static OrderOperationResult ProductNotAvailable(string productId) =>
         new(null, OrderOperationFailure.ProductNotAvailable, productId);
 }
@@ -25,5 +28,6 @@ public enum OrderOperationFailure
     None,
     OrderNotFound,
     CustomerNotFound,
+    OrderAlreadyDeleted,
     ProductNotAvailable
 }

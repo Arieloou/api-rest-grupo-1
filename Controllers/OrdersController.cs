@@ -86,20 +86,21 @@ public sealed class OrdersController(OrderService orderService) : ControllerBase
     }
 
     [HttpDelete("{orderId}")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<OrderResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ErrorResponse>(StatusCodes.Status404NotFound)]
-    public IActionResult Delete(
+    public ActionResult<OrderResponse> Delete(
         [FromRoute]
         [RegularExpression("^O-[0-9]+$", ErrorMessage = "orderId must use the format O- followed by digits.")]
         string orderId)
     {
-        if (!orderService.Delete(orderId))
+        var result = orderService.Delete(orderId);
+        if (result.Failure == OrderOperationFailure.OrderNotFound)
         {
             return NotFound(Error("ORDER_NOT_FOUND", $"Order {orderId} was not found."));
         }
 
-        return NoContent();
+        return Ok(result.Order);
     }
 
     private ActionResult<OrderResponse> OrderFailure(
@@ -112,6 +113,8 @@ public sealed class OrdersController(OrderService orderService) : ControllerBase
                 NotFound(Error("ORDER_NOT_FOUND", $"Order {orderId} was not found.")),
             OrderOperationFailure.CustomerNotFound =>
                 NotFound(Error("CUSTOMER_NOT_FOUND", $"Customer {customerId} was not found.")),
+            OrderOperationFailure.OrderAlreadyDeleted =>
+                Conflict(Error("ORDER_ALREADY_DELETED", $"Order {orderId} has already been deleted.")),
             OrderOperationFailure.ProductNotAvailable =>
                 Conflict(Error(
                     "PRODUCT_NOT_AVAILABLE",

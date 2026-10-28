@@ -2,5 +2,6 @@ namespace GestionPedidos.Models.Domain;
 
 public enum OrderStatus
 {
-    CREATED
+    CREATED,
+    DELETED
 }

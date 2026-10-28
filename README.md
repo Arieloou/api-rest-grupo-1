@@ -42,7 +42,7 @@ Models/
 | `GET` | `/orders/{orderId}` | Path `orderId` | `200 OK` | Obtiene un pedido por su identificador. |
 | `GET` | `/orders` | Query opcional `customerId` | `200 OK` | Lista pedidos; permite filtrar por cliente. |
 | `PUT` | `/orders/{orderId}` | Path `orderId`, body `UpdateOrderRequest` | `200 OK` | Reemplaza el pedido y recalcula su total e inventario. |
-| `DELETE` | `/orders/{orderId}` | Path `orderId` | `204 No Content` | Elimina el pedido y repone su inventario. |
+| `DELETE` | `/orders/{orderId}` | Path `orderId` | `200 OK` | Marca el pedido como `DELETED`, devuelve su representación y repone el inventario. |
 | `POST` | `/customers` | Body `CreateCustomerRequest` | `201 Created` | Crea un cliente. |
 | `GET` | `/customers/{customerId}` | Path `customerId` | `200 OK` | Obtiene un cliente por su identificador. |
 | `GET` | `/customers` | — | `200 OK` | Lista todos los clientes. |
@@ -55,7 +55,9 @@ Ejemplo requerido de query parameter: `GET /orders?customerId=C-1024`.
 
 ## Contratos JSON
 
-Solicitud de creación:
+### Pedidos
+
+`POST /orders` y `PUT /orders/{orderId}` utilizan la misma estructura de entrada:
 
 ```json
 {
@@ -69,7 +71,7 @@ Solicitud de creación:
 }
 ```
 
-Respuesta exitosa:
+Las operaciones que crean, consultan o actualizan un pedido retornan:
 
 ```json
 {
@@ -80,7 +82,75 @@ Respuesta exitosa:
 }
 ```
 
-Todos los errores comparten `code`, `message` y `correlationId`. Los errores de validación pueden agregar `details` por campo:
+`GET /orders` y `GET /orders?customerId=C-1024` retornan una colección:
+
+```json
+[
+  {
+    "id": "O-9831",
+    "customerId": "C-1024",
+    "status": "CREATED",
+    "total": 129.90
+  }
+]
+```
+
+`DELETE /orders/{orderId}` realiza una eliminación lógica y retorna el pedido actualizado:
+
+```json
+{
+  "id": "O-9831",
+  "customerId": "C-1024",
+  "status": "DELETED",
+  "total": 129.90
+}
+```
+
+El pedido continúa disponible para consulta. Repetir la operación retorna el mismo resultado sin reponer nuevamente el inventario.
+
+### Clientes
+
+`POST /customers` y `PUT /customers/{customerId}` utilizan:
+
+```json
+{
+  "fullName": "Ana Pérez",
+  "email": "ana.perez@example.com"
+}
+```
+
+Las operaciones que crean, consultan o actualizan un cliente retornan:
+
+```json
+{
+  "id": "C-1025",
+  "fullName": "Ana Pérez",
+  "email": "ana.perez@example.com"
+}
+```
+
+`GET /customers` retorna una colección:
+
+```json
+[
+  {
+    "id": "C-1024",
+    "fullName": "Cliente Demo",
+    "email": "cliente1024@example.com"
+  },
+  {
+    "id": "C-1025",
+    "fullName": "Ana Pérez",
+    "email": "ana.perez@example.com"
+  }
+]
+```
+
+`DELETE /customers/{customerId}` responde `204 No Content` y no contiene cuerpo JSON.
+
+### Errores
+
+Todos los errores comparten `code`, `message` y `correlationId`:
 
 ```json
 {
@@ -89,6 +159,35 @@ Todos los errores comparten `code`, `message` y `correlationId`. Los errores de 
   "correlationId": "ab23f8b1-91c2-45dc"
 }
 ```
+
+Los errores de validación agregan opcionalmente `details` con los mensajes asociados a cada campo:
+
+```json
+{
+  "code": "INVALID_REQUEST",
+  "message": "The request contains invalid data.",
+  "correlationId": "ab23f8b1-91c2-45dc",
+  "details": {
+    "Items": [
+      "At least one item is required."
+    ]
+  }
+}
+```
+
+Los principales códigos de negocio son:
+
+| Código | Estado HTTP | Descripción |
+|---|---|---|
+| `ORDER_NOT_FOUND` | `404` | El pedido solicitado no existe. |
+| `ORDER_ALREADY_DELETED` | `409` | El pedido está eliminado y no puede modificarse. |
+| `CUSTOMER_NOT_FOUND` | `404` | El cliente solicitado o asociado no existe. |
+| `PRODUCT_NOT_AVAILABLE` | `409` | El producto no existe o no tiene inventario suficiente. |
+| `CUSTOMER_EMAIL_ALREADY_EXISTS` | `409` | El correo ya pertenece a otro cliente. |
+| `CUSTOMER_HAS_ORDERS` | `409` | El cliente no puede eliminarse porque tiene pedidos. |
+| `INVALID_CUSTOMER_ID` | `400` | El identificador usado como filtro no tiene el formato esperado. |
+| `INVALID_REQUEST` | `400` | La solicitud no supera las validaciones de entrada. |
+| `INTERNAL_ERROR` | `500` | Ocurrió un error inesperado en el servidor. |
 
 ## Decisiones de diseño
 
@@ -99,7 +198,7 @@ Todos los errores comparten `code`, `message` y `correlationId`. Los errores de 
 5. **Importes decimales.** Los precios y totales se calculan con `decimal` para evitar errores de precisión binaria propios de valores de punto flotante.
 6. **Almacenamiento en memoria para el taller.** El alcance se mantiene autocontenido y ejecutable sin infraestructura. Los datos y el inventario se reinician cada vez que arranca la aplicación; en producción se sustituiría por persistencia transaccional.
 7. **Integridad entre clientes y pedidos.** Un pedido solo puede usar un cliente existente y un cliente con pedidos no puede eliminarse. Esto evita referencias huérfanas.
-8. **Inventario reversible.** Al reemplazar o eliminar un pedido se devuelven primero sus cantidades al inventario, evitando pérdidas de stock durante el CRUD.
+8. **Eliminación lógica e inventario reversible.** Al eliminar un pedido se cambia su estado a `DELETED` en lugar de borrar su historial. El inventario se repone una sola vez y la respuesta devuelve el recurso actualizado.
 
 ## Ejecución local
 

@@ -323,7 +323,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status 204', () => pm.response.to.have.status(204));"
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('El pedido queda eliminado', () => pm.expect(pm.response.json().status).to.eql('DELETED'));"
                 ]
               }
             }

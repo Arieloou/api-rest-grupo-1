@@ -155,20 +155,36 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '409':
-          $ref: '#/components/responses/ProductNotAvailable'
+          description: El pedido está eliminado o un producto no tiene inventario suficiente.
+          headers:
+            X-Correlation-Id:
+              $ref: '#/components/headers/CorrelationId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '500':
           $ref: '#/components/responses/InternalError'
     delete:
       tags: [Orders]
       summary: Eliminar un pedido
-      description: Elimina el pedido y repone al inventario las cantidades reservadas.
+      description: Marca el pedido como DELETED y repone al inventario las cantidades reservadas. La operación es idempotente.
       operationId: deleteOrder
       responses:
-        '204':
-          description: Pedido eliminado.
+        '200':
+          description: Pedido marcado como eliminado.
           headers:
             X-Correlation-Id:
               $ref: '#/components/headers/CorrelationId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+              example:
+                id: O-9831
+                customerId: C-1024
+                status: DELETED
+                total: 129.90
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
@@ -465,7 +481,7 @@ components:
           example: C-1024
         status:
           type: string
-          enum: [CREATED]
+          enum: [CREATED, DELETED]
         total:
           type: number
           format: decimal

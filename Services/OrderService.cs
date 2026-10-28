@@ -73,6 +73,11 @@ public sealed class OrderService(CustomerService customerService)
                 return OrderOperationResult.OrderNotFound();
             }
 
+            if (storedOrder.Response.Status == OrderStatus.DELETED)
+            {
+                return OrderOperationResult.OrderAlreadyDeleted();
+            }
+
             if (!customerService.Exists(request.CustomerId))
             {
                 return OrderOperationResult.CustomerNotFound();
@@ -101,17 +106,24 @@ public sealed class OrderService(CustomerService customerService)
         }
     }
 
-    public bool Delete(string orderId)
+    public OrderOperationResult Delete(string orderId)
     {
         lock (_syncRoot)
         {
-            if (!_orders.Remove(orderId, out var storedOrder))
+            if (!_orders.TryGetValue(orderId, out var storedOrder))
             {
-                return false;
+                return OrderOperationResult.OrderNotFound();
+            }
+
+            if (storedOrder.Response.Status == OrderStatus.DELETED)
+            {
+                return OrderOperationResult.Success(storedOrder.Response);
             }
 
             AddToStock(AggregateItems(storedOrder.Items));
-            return true;
+            var response = storedOrder.Response with { Status = OrderStatus.DELETED };
+            _orders[orderId] = storedOrder with { Response = response };
+            return OrderOperationResult.Success(response);
         }
     }
 
