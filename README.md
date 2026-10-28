@@ -34,6 +34,78 @@ Models/
 └── Results/      # Resultados internos de las operaciones de servicio
 ```
 
+## Estructura de OpenAPI
+
+El contrato de la API se encuentra en [`openapi.yaml`](openapi.yaml) y utiliza **OpenAPI 3.0.3**. Su organización general es:
+
+```text
+openapi.yaml
+├── openapi       # Versión de la especificación OpenAPI
+├── info          # Nombre, descripción y versión de la API
+├── servers       # URL de acceso al servicio
+├── tags          # Agrupación de operaciones por recurso
+├── paths         # Endpoints, métodos HTTP y sus contratos
+└── components    # Elementos reutilizables mediante referencias $ref
+    ├── parameters
+    ├── headers
+    ├── responses
+    └── schemas
+```
+
+### Secciones principales
+
+| Sección | Propósito | Contenido en esta API |
+|---|---|---|
+| `openapi` | Indica la versión de la especificación utilizada. | `3.0.3` |
+| `info` | Contiene los metadatos del contrato. | Título, descripción y versión `2.0.0` de la API. |
+| `servers` | Declara las URLs donde está disponible el servicio. | `http://localhost:5237` para el entorno local. |
+| `tags` | Agrupa visualmente las operaciones relacionadas. | `Orders` y `Customers`. |
+| `paths` | Describe las rutas y operaciones HTTP disponibles. | CRUD de `/orders` y `/customers`. |
+| `components` | Centraliza definiciones reutilizables para evitar duplicación. | Parámetros, headers, respuestas y schemas. |
+
+La versión declarada en `openapi` corresponde al estándar utilizado para interpretar el documento; `info.version` identifica la versión funcional del contrato de esta API.
+
+### Estructura de una operación
+
+Cada entrada de `paths` sigue esta jerarquía:
+
+```text
+Ruta
+└── Método HTTP
+    ├── tags y summary
+    ├── operationId
+    ├── parameters
+    ├── requestBody
+    └── responses
+        ├── código HTTP
+        ├── headers
+        └── content → application/json → schema
+```
+
+Por ejemplo, `GET /orders` define el parámetro de consulta opcional `customerId` y sus respuestas `200`, `400` y `500`. En cambio, `POST /orders` agrega un `requestBody` con el JSON necesario para crear el pedido.
+
+Los códigos de respuesta se escriben entre comillas, como `'200'` o `'404'`, para mantener la compatibilidad con YAML.
+
+### Componentes reutilizables
+
+La sección `components` contiene:
+
+| Grupo | Componentes principales | Uso |
+|---|---|---|
+| `parameters` | `CorrelationId`, `OrderId`, `CustomerId` | Define parámetros de header y path reutilizables. |
+| `headers` | `CorrelationId` | Documenta el encabezado de trazabilidad devuelto por la API. |
+| `responses` | `BadRequest`, `OrderNotFound`, `CustomerNotFound`, `ProductNotAvailable`, `DuplicateCustomerEmail`, `InternalError` | Estandariza las respuestas de error frecuentes. |
+| `schemas` | `OrderWriteRequest`, `OrderItem`, `Order`, `CustomerWriteRequest`, `Customer`, `Error` | Describe la estructura y validaciones de los objetos JSON. |
+
+Los componentes se conectan con las operaciones utilizando `$ref`. Por ejemplo:
+
+```yaml
+schema:
+  $ref: '#/components/schemas/Order'
+```
+
+Esta referencia indica que la respuesta utiliza el schema `Order` definido una sola vez en `components.schemas`. La estructura sigue la [especificación oficial OpenAPI 3.0.3](https://spec.openapis.org/oas/v3.0.3.html).
+
 ## Endpoints
 
 | Método | Ruta | Parámetros | Respuesta exitosa | Descripción |
